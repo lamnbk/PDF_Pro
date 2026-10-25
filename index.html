@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trình chỉnh sửa PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--bg:#eef6f1;--bar:#f6fbf8;--tab:#d3e6dc;--ink:#14302a;--mute:#5d776f;--acc:#1f8a6a;--accfg:#fff;--line:#d4e3db;--view:#c9d6d0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15201c;--bar:#1a2924;--tab:#223630;--ink:#e3f1ea;--mute:#8fb0a4;--acc:#2fb88f;--accfg:#06241a;--line:#2b4139;--view:#0f1714}}
+:root[data-theme="dark"]{--bg:#15201c;--bar:#1a2924;--tab:#223630;--ink:#e3f1ea;--mute:#8fb0a4;--acc:#2fb88f;--accfg:#06241a;--line:#2b4139;--view:#0f1714}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.3 "Segoe UI",system-ui,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+.top{background:var(--tab);display:flex;align-items:flex-end;gap:10px;padding:8px 12px 0}
+.tab{background:var(--bar);padding:9px 16px;border-radius:12px 12px 0 0;font-weight:600;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp{flex:1}
+.pill{background:var(--acc);color:var(--accfg);border-radius:20px;padding:7px 14px;font-weight:600;margin-bottom:6px;font-size:13px}
+.bar{background:var(--bar);border-bottom:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;align-items:stretch;gap:1px;padding:2px 8px}
+.grp{display:flex;flex-wrap:wrap;gap:1px;padding-right:5px;margin-right:4px;border-right:1px solid var(--line)}
+.grp:last-child{border:0}
+.b{background:none;border:0;color:var(--ink);font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-width:44px;padding:3px 4px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.b i{font-style:normal;font-size:16px;line-height:20px;height:20px}
+.b span{font-size:10.5px;color:var(--mute)}
+.b:hover{background:var(--line)}.b.on{background:var(--acc)}.b.on span{color:var(--accfg)}.b.on i{color:var(--accfg)}
+.b:disabled{opacity:.35;pointer-events:none}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:1px 8px 3px}
+.ctl button{background:none;border:0;color:var(--ink);font-size:16px;cursor:pointer;padding:1px 6px;border-radius:8px}
+.ctl button:hover{background:var(--line)}
+.ctl input[type=number]{width:56px;font:inherit;padding:5px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bar);color:var(--ink)}
+.ctl input[type=color]{width:34px;height:30px;border:1px solid var(--line);border-radius:8px;background:none;padding:0}
+.ctl label{color:var(--mute);font-size:12.5px;display:flex;align-items:center;gap:5px}
+.zl{min-width:48px;text-align:center;font-weight:600}
+#view{flex:1;overflow:auto;background:var(--view);padding:18px;position:relative}
+#pages{display:flex;flex-direction:column;align-items:center;gap:14px;width:max-content;min-width:100%}
+.pg{position:relative;box-shadow:0 2px 12px rgba(0,0,0,.3);background:#fff}
+.pg canvas{display:block}.pg .o{position:absolute;left:0;top:0}
+#empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;color:var(--mute);padding:20px}
+#empty h2{margin:0;color:var(--ink)}
+.big{background:var(--acc);color:var(--accfg);border:0;border-radius:12px;padding:12px 26px;font:600 16px inherit;cursor:pointer}
+#ti{position:absolute;z-index:5;display:none;min-width:140px;min-height:34px;font-family:"Segoe UI",Arial,sans-serif;border:1.5px dashed var(--acc);background:rgba(255,255,255,.85);color:#000;padding:2px 4px;resize:both;outline:0}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:20px;display:none;z-index:9}
+.top button{background:none;border:0;color:var(--ink);font-size:18px;cursor:pointer;padding:4px 8px;margin-bottom:6px;border-radius:8px}
+.top button:hover{background:var(--line)}
+#md{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+#md form{background:var(--bar);color:var(--ink);border-radius:14px;padding:18px;width:min(460px,100%);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:10px}
+#md h3{margin:0}#md p{margin:0;color:var(--mute);font-size:12.5px}
+#md label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--mute)}
+#md input,#md textarea,#md select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+#md input[type=color]{height:36px;padding:2px}
+#md .ac{display:flex;gap:8px;justify-content:flex-end}
+#md button{font:inherit;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;background:var(--line);color:var(--ink)}
+#md .ac .ok{background:var(--acc);color:var(--accfg);font-weight:600}
+#md .ls{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow:auto}#md .ls button{text-align:left}
+.ctl button.on{background:var(--acc);color:var(--accfg)}
+</style>
+</head>
+<body>
+<div class="top"><div class="tab" id="tab">● Chưa mở tệp</div><div class="sp"></div><div class="pill">PDF Editor · chạy trong trình duyệt</div></div>
+<div class="bar">
+<div class="row">
+ <div class="grp"><button class="b" id="open"><i>📂</i><span>Mở</span></button><button class="b" id="save"><i>💾</i><span>Lưu</span></button><button class="b" id="print"><i>🖨️</i><span>In</span></button></div>
+ <div class="grp"><button class="b" id="undo"><i>↶</i><span>Hoàn tác</span></button><button class="b" id="redo"><i>↷</i><span>Làm lại</span></button></div>
+ <div class="grp">
+  <button class="b tool" data-t="select"><i>🖱️</i><span>Chọn · Q</span></button>
+  <button class="b tool" data-t="hand"><i>✋</i><span>Tay · W</span></button>
+  <button class="b tool" data-t="erase" id="del"><i>🧽</i><span>Xóa vùng</span></button>
+ </div>
+ <div class="grp">
+  <button class="b tool" data-t="text"><i>T</i><span>Chữ · T</span></button>
+  <button class="b tool" data-t="rect"><i>▭</i><span>Chữ nhật</span></button>
+  <button class="b tool" data-t="ellipse"><i>◯</i><span>Elip</span></button>
+  <button class="b tool" data-t="line"><i>╱</i><span>Đường</span></button>
+  <button class="b tool" data-t="arrow"><i>➜</i><span>Mũi tên</span></button>
+ </div>
+</div>
+<div class="row">
+ <div class="grp">
+  <button class="b tool" data-t="pen"><i>✒️</i><span>Bút</span></button>
+  <button class="b tool" data-t="hl"><i>🖍️</i><span>Dạ quang</span></button>
+  <button class="b tool" data-t="ul"><i><u>U</u></i><span>Gạch chân</span></button>
+  <button class="b tool" data-t="st"><i><s>S</s></i><span>Gạch ngang</span></button>
+  <button class="b tool" data-t="redact"><i>🔒</i><span>Che vĩnh viễn</span></button>
+ </div>
+ <div class="grp">
+  <button class="b" id="rl"><i>⟲</i><span>Xoay trái</span></button>
+  <button class="b" id="rr"><i>⟳</i><span>Xoay phải</span></button>
+  <button class="b" id="dp"><i>🗑</i><span>Xóa trang</span></button>
+ </div>
+</div>
+<div class="ctl">
+ <button id="zo" title="Thu nhỏ">−</button><span class="zl" id="zl">120%</span><button id="zi" title="Phóng to">+</button>
+ <button id="fw" title="Vừa chiều rộng">↔</button>
+ <button id="th" title="Chế độ tối">🌙</button>
+ <button id="pv" title="Trang trước">◀</button><input type="number" id="pn" min="1" value="1"><span id="pt">/ 0</span><button id="nx" title="Trang sau">▶</button>
+ <label>Màu <input type="color" id="col" value="#e11d48"></label>
+ <label>Nét <input type="number" id="lw" min="1" max="30" value="3"></label>
+ <label>Cỡ chữ <input type="number" id="fs" min="8" max="120" value="18"></label>
+</div>
+</div>
+<div id="view"><div id="pages"></div>
+ <div id="empty"><div style="font-size:54px">📄</div><h2>Mở một tệp PDF để bắt đầu chỉnh sửa</h2><div>Kéo thả tệp vào đây hoặc bấm nút bên dưới. Tệp được xử lý ngay trên máy bạn, không tải lên máy chủ.</div><button class="big" id="open2">Mở tệp PDF</button></div>
+ <textarea id="ti" rows="1"></textarea>
+</div>
+<input type="file" id="file" accept="application/pdf" hidden>
+<div id="msg"></div>
+<script>
+const $=s=>document.querySelector(s);
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const S={bytes:null,pdf:null,pages:[],els:[],z:1.2,tool:'select',sel:null,undo:[],redo:[],name:'tai-lieu.pdf',tok:0};
+const FONT='"Segoe UI",Arial,sans-serif';
+function msg(t){const m=$('#msg');m.textContent=t;m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',2600)}
+const meta=()=>JSON.stringify(S.pages.map(({src,rot,base,pw,ph,an})=>({src,rot,base,pw,ph,an})));
+function snap(){S.undo.push(meta());if(S.undo.length>60)S.undo.shift();S.redo=[];btns()}
+function restore(j){S.pages=JSON.parse(j);S.sel=null;renderAll();btns()}
+function btns(){$('#undo').disabled=!S.undo.length;$('#redo').disabled=!S.redo.length;['save','print','del','rl','rr','dp'].forEach(i=>$('#'+i).disabled=!S.pdf)}
+$('#undo').onclick=()=>{if(!S.undo.length)return;S.redo.push(meta());restore(S.undo.pop())};
+$('#redo').onclick=()=>{if(!S.redo.length)return;S.undo.push(meta());restore(S.redo.pop())};
+
+/* ---- mở tệp ---- */
+const pick=()=>$('#file').click();$('#open').onclick=pick;$('#open2').onclick=pick;
+$('#file').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f);e.target.value=''};
+$('#view').addEventListener('dragover',e=>e.preventDefault());
+$('#view').addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&/pdf/i.test(f.type+f.name))loadFile(f)});
+async function loadFile(f){
+ try{const buf=await f.arrayBuffer();S.bytes=new Uint8Array(buf.slice(0));
+  S.pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0))}).promise;
+  S.name=f.name;S.pages=[];S.undo=[];S.redo=[];S.sel=null;
+  for(let i=1;i<=S.pdf.numPages;i++){const p=await S.pdf.getPage(i);const v=p.getViewport({scale:1});S.pages.push({src:i-1,rot:0,base:p.rotate,pw:v.width,ph:v.height,an:[]})}
+  $('#tab').textContent='● '+f.name;$('#empty').style.display='none';
+  await renderAll();btns();
+ }catch(err){msg('Không mở được tệp PDF này');console.error(err)}
+}
+async function renderAll(){
+ const tok=++S.tok,box=$('#pages');box.innerHTML='';S.els=[];S.tx=[];$('#pt').textContent='/ '+S.pages.length;
+ const dpr=window.devicePixelRatio||1;
+ for(let i=0;i<S.pages.length;i++){
+  const pg=S.pages[i],p=await S.pdf.getPage(pg.src+1);
+  const rotation=(pg.base+pg.rot)%360,v=p.getViewport({scale:S.z,rotation});
+  pg.pw=v.width/S.z;pg.ph=v.height/S.z;
+  const d=document.createElement('div');d.className='pg';d.style.width=v.width+'px';d.style.height=v.height+'px';
+  const c=document.createElement('canvas'),o=document.createElement('canvas');o.className='o';
+  for(const k of [c,o]){k.width=v.width*dpr;k.height=v.height*dpr;k.style.width=v.width+'px';k.style.height=v.height+'px'}
+  d.append(c,o);box.append(d);S.els[i]={d,o};bind(o,i);
+  await p.render({canvasContext:c.getContext('2d'),viewport:v,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null}).promise;
+  if(tok!==S.tok)return;redraw(i);txFor(i);
+ }
+}
+
+/* ---- vẽ chú thích ---- */
+function tmeasure(a){const x=document.createElement('canvas').getContext('2d');x.font=fontOf(a);const L=a.s.split('\n');return{w:Math.max(...L.map(l=>x.measureText(l).width)),h:L.length*a.fs*1.25,L}}
+function bounds(a){
+ if(a.t==='pen'){const xs=a.pts.map(p=>p[0]),ys=a.pts.map(p=>p[1]);return[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]}
+ if(a.t==='text'){const m=tmeasure(a);return[a.x1,a.y1,a.x1+m.w,a.y1+m.h]}
+ return[Math.min(a.x1,a.x2),Math.min(a.y1,a.y2),Math.max(a.x1,a.x2),Math.max(a.y1,a.y2)]}
+function drawA(x,a){
+ x.save();x.strokeStyle=x.fillStyle=a.c;x.lineWidth=a.w;x.lineCap=x.lineJoin='round';
+ const[l,t,r,b]=a.t==='pen'||a.t==='text'?[0,0,0,0]:bounds(a);
+ switch(a.t){
+  case'rect':x.strokeRect(l,t,r-l,b-t);break;
+  case'ellipse':x.beginPath();x.ellipse((l+r)/2,(t+b)/2,Math.max((r-l)/2,.1),Math.max((b-t)/2,.1),0,0,7);x.stroke();break;
+  case'line':case'arrow':x.beginPath();x.moveTo(a.x1,a.y1);x.lineTo(a.x2,a.y2);x.stroke();
+   if(a.t==='arrow'){const h=arrowHead(a);x.beginPath();x.moveTo(h[0][0],h[0][1]);x.lineTo(a.x2,a.y2);x.lineTo(h[1][0],h[1][1]);x.stroke()}break;
+  case'erase':x.setLineDash([6,4]);x.lineWidth=1.5/S.z;x.strokeStyle='#dc2626';x.fillStyle='rgba(220,38,38,.12)';x.fillRect(l,t,r-l,b-t);x.strokeRect(l,t,r-l,b-t);break;
+  case'hl':x.globalAlpha=.35;x.fillRect(l,t,r-l,b-t);break;
+  case'cover':x.fillRect(l,t,r-l,b-t);break;
+  case'img':{const im=getImg(a.src);if(im.complete)x.drawImage(im,l,t,r-l,b-t);else im.onload=()=>redrawAll();break}
+  case'redact':x.fillStyle='#000';x.fillRect(l,t,r-l,b-t);break;
+  case'ul':x.beginPath();x.moveTo(l,b);x.lineTo(r,b);x.stroke();break;
+  case'st':x.beginPath();x.moveTo(l,(t+b)/2);x.lineTo(r,(t+b)/2);x.stroke();break;
+  case'pen':x.beginPath();a.pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));if(a.pts.length===1)x.lineTo(a.pts[0][0]+.1,a.pts[0][1]);x.stroke();break;
+  case'text':{const m=tmeasure(a);x.font=fontOf(a);x.textBaseline='top';x.globalAlpha=a.op||1;x.translate(a.x1,a.y1);x.rotate((a.ang||0)*Math.PI/180);drawLines(x,a,m);break}
+ }x.restore()}
+function arrowHead(a){const s=Math.max(10,a.w*4),g=Math.atan2(a.y2-a.y1,a.x2-a.x1);return[-.5,.5].map(k=>[a.x2-s*Math.cos(g+k),a.y2-s*Math.sin(g+k)])}
+function redraw(i,tmp){
+ const e=S.els[i];if(!e)return;const x=e.o.getContext('2d'),dpr=window.devicePixelRatio||1;
+ x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,e.o.width,e.o.height);x.setTransform(dpr*S.z,0,0,dpr*S.z,0,0);
+ S.pages[i].an.forEach(a=>drawA(x,a));if(tmp)drawA(x,tmp);
+ (S.hits||[]).forEach((h,k)=>{if(h.p===i){x.fillStyle=k===S.hi?'rgba(255,140,0,.45)':'rgba(255,230,0,.4)';x.fillRect(h.l,h.t,h.w,h.h)}});
+ if(S.sel&&S.sel.p===i){const a=S.pages[i].an[S.sel.i];if(a){const[l,t,r,b]=bounds(a);x.save();x.strokeStyle='#2563eb';x.lineWidth=1.2/S.z;x.setLineDash([5/S.z,4/S.z]);x.strokeRect(l-3,t-3,r-l+6,b-t+6);if(a.t==='img'){x.fillStyle='#2563eb';x.fillRect(r-4/S.z,b-4/S.z,8/S.z,8/S.z)}x.restore()}}
+}
+
+/* ---- công cụ ---- */
+const DRAW=['erase','rect','ellipse','line','arrow','hl','hy','ul','st','redact','pen'];
+function setTool(t){if(t==='sign'&&!S.sig)sigPad();S.tool=t;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+ document.querySelectorAll('.o').forEach(o=>o.style.cursor=t==='hand'?'grab':t==='select'?'default':t==='text'?'text':'crosshair');S.sel=null;S.pages.forEach((_,i)=>redraw(i))}
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+function bind(o,i){
+ o.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':S.tool==='text'?'text':'crosshair';
+ const pos=e=>{const r=o.getBoundingClientRect();return[(e.clientX-r.left)/S.z,(e.clientY-r.top)/S.z]};
+ let cur=null,drag=null,pan=null;
+ o.onpointerdown=e=>{
+  const[x,y]=pos(e),t=S.tool,v=$('#view');o.setPointerCapture(e.pointerId);
+  if(t==='hand'){pan={x:e.clientX,y:e.clientY,l:v.scrollLeft,t:v.scrollTop};o.style.cursor='grabbing';return}
+  if(t==='select'){const an=S.pages[i].an;let h=-1;if(S.sel&&S.sel.p===i){const a0=an[S.sel.i];if(a0&&a0.t==='img'&&Math.hypot(x-a0.x2,y-a0.y2)<10/S.z){drag={x,y,moved:false,rs:true};return}}
+   for(let k=an.length-1;k>=0;k--){const[l,tp,r,b]=bounds(an[k]),m=6;if(x>=l-m&&x<=r+m&&y>=tp-m&&y<=b+m){h=k;break}}
+   S.sel=h>=0?{p:i,i:h}:null;S.pages.forEach((_,k)=>redraw(k));if(h>=0)drag={x,y,moved:false};return}
+  if(t==='text'){openText(i,x,y);return}
+  if(t==='edit'){editAt(i,x,y);return}
+  if(t==='check'){stamp(i,x,y,e.shiftKey);return}
+  if(t==='sign'){if(S.sig){setTool('select');placeImg(i,S.sig.src,x-70,y-30,S.sig.ar,140)}else sigPad();return}
+  const c=$('#col').value,w=+$('#lw').value||3;
+  if(!DRAW.includes(t))return;cur=t==='pen'?{t,c,w,pts:[[x,y]]}:t==='hy'?{t:'hl',c:'#ffe600',w:1,x1:x,y1:y,x2:x,y2:y}:{t,c,w:t==='hl'?1:w,x1:x,y1:y,x2:x,y2:y};
+ };
+ o.onpointermove=e=>{
+  if(pan){const v=$('#view');v.scrollLeft=pan.l-(e.clientX-pan.x);v.scrollTop=pan.t-(e.clientY-pan.y);return}
+  const[x,y]=pos(e);
+  if(drag&&S.sel){const a=S.pages[i].an[S.sel.i],dx=x-drag.x,dy=y-drag.y;
+   if(!drag.moved){if(Math.abs(dx)+Math.abs(dy)<1)return;snap();drag.moved=true}
+   if(drag.rs){a.x2+=dx;a.y2=a.y1+(a.x2-a.x1)*a.ar}else mv(a,dx,dy);drag.x=x;drag.y=y;redraw(i);return}
+  if(!cur)return;
+  if(cur.t==='pen')cur.pts.push([x,y]);else{cur.x2=x;cur.y2=y;if(e.shiftKey&&(cur.t==='line'||cur.t==='arrow')){if(Math.abs(x-cur.x1)>Math.abs(y-cur.y1))cur.y2=cur.y1;else cur.x2=cur.x1}}
+  redraw(i,cur)};
+ o.onpointerup=()=>{
+  pan=null;if(S.tool==='hand')o.style.cursor='grab';drag=null;
+  if(cur&&cur.t==='erase'){eraseArea(i,cur);cur=null;redraw(i);return}
+  if(cur){const small=cur.t!=='pen'&&Math.hypot(cur.x2-cur.x1,cur.y2-cur.y1)<3;
+   if(!small){snap();S.pages[i].an.push(cur);S.sel=null}cur=null;redraw(i)}};
+}
+function mv(a,dx,dy){if(a.t==='pen')a.pts.forEach(p=>{p[0]+=dx;p[1]+=dy});else{a.x1+=dx;a.y1+=dy;if(a.x2!==undefined){a.x2+=dx;a.y2+=dy}}}
+function eraseArea(p,c){const l=Math.min(c.x1,c.x2),t=Math.min(c.y1,c.y2),r=Math.max(c.x1,c.x2),b=Math.max(c.y1,c.y2);if(r-l<3||b-t<3)return;
+ snap();const pg=S.pages[p];pg.an=pg.an.filter(a=>{const q=bounds(a);if(a.t==='cover')return!(q[0]>=l&&q[2]<=r&&q[1]>=t&&q[3]<=b);return q[2]<l||q[0]>r||q[3]<t||q[1]>b});
+ pg.an.push({t:'cover',c:'#ffffff',w:1,x1:l,y1:t,x2:r,y2:b});S.sel=null}
+function delSel(){if(!S.sel)return;snap();S.pages[S.sel.p].an.splice(S.sel.i,1);const p=S.sel.p;S.sel=null;redraw(p)}
+$('#del').onclick=delSel;
+const ti=$('#ti');
+function openText(i,x,y,o){o=o||{};
+ commitText();const fs=o.fs||+$('#fs').value||18,e=S.els[i].d;
+ ti.style.display='block';ti.style.fontSize=fs*S.z+'px';ti.style.lineHeight='1.25';ti.style.fontFamily=S.font;ti.style.fontWeight=S.fb?'bold':'normal';ti.style.fontStyle=S.fi?'italic':'normal';ti.style.textDecoration=S.fu?'underline':'none';ti.style.color=o.c||$('#col').value;ti.value=o.s||'';
+ const vr=$('#view'),r=e.getBoundingClientRect(),vb=vr.getBoundingClientRect();
+ ti.style.left=(r.left-vb.left+vr.scrollLeft+x*S.z)+'px';ti.style.top=(r.top-vb.top+vr.scrollTop+y*S.z)+'px';
+ ti._ctx={i,x,y,fs,c:o.c||$('#col').value,o};setTimeout(()=>ti.focus(),0)}
+function commitText(){
+ const c=ti._ctx;if(!c)return;ti._ctx=null;const s=ti.value.replace(/\s+$/,'');ti.style.display='none';
+ const o=c.o||{};if(o.cv){if(s===o.s)return;snap();S.pages[c.i].an.push({t:'cover',c:'#ffffff',w:1,...o.cv})}
+ if(s){if(!o.cv)snap();S.pages[c.i].an.push({t:'text',c:c.c,w:1,x1:c.x,y1:c.y,fs:c.fs,s,ff:S.font,b:S.fb,i:S.fi,u:S.fu});S.sel={p:c.i,i:S.pages[c.i].an.length-1}}redraw(c.i)}
+ti.onblur=commitText;ti.onkeydown=e=>{if(e.key==='Escape'){ti.value='';ti.blur()}};
+document.addEventListener('keydown',e=>{
+ if(e.target===ti||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+ if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();(e.shiftKey?$('#redo'):$('#undo')).click();return}
+ if((e.ctrlKey||e.metaKey)&&e.key==='y'){$('#redo').click();return}
+ if(e.key==='Delete'||e.key==='Backspace'){delSel();return}
+ const m={q:'select',w:'hand',t:'text',e:'edit'}[e.key.toLowerCase()];if(m)setTool(m)});
+
+/* ---- trang ---- */
+function rot(dir){const pg=S.pages[cp()];snap();
+ pg.an.forEach(a=>{const f=dir>0?(x,y)=>[pg.ph-y,x]:(x,y)=>[y,pg.pw-x];
+  if(a.t==='pen')a.pts=a.pts.map(p=>f(p[0],p[1]));else{[a.x1,a.y1]=f(a.x1,a.y1);if(a.x2!==undefined)[a.x2,a.y2]=f(a.x2,a.y2)}});
+ [pg.pw,pg.ph]=[pg.ph,pg.pw];pg.rot=(pg.rot+(dir>0?90:270))%360;S.sel=null;renderAll()}
+$('#rr').onclick=()=>rot(1);$('#rl').onclick=()=>rot(-1);
+$('#dp').onclick=()=>{if(S.pages.length<2)return msg('Cần giữ lại ít nhất một trang');const i=cp();snap();S.pages.splice(i,1);S.sel=null;renderAll()};
+function cp(){const v=$('#view'),vt=v.getBoundingClientRect().top;let best=0,bd=1e9;
+ S.els.forEach((e,i)=>{const d=Math.abs(e.d.getBoundingClientRect().top-vt-10);if(d<bd){bd=d;best=i}});return best}
+$('#view').addEventListener('scroll',()=>{if(S.els.length&&document.activeElement!==$('#pn'))$('#pn').value=cp()+1});
+const go=n=>{n=Math.max(0,Math.min(S.els.length-1,n));S.els[n]&&S.els[n].d.scrollIntoView({block:'start'});$('#pn').value=n+1};
+$('#pv').onclick=()=>go(cp()-1);$('#nx').onclick=()=>go(cp()+1);$('#pn').onchange=e=>go(+e.target.value-1);
+function zoom(z){S.z=Math.max(.3,Math.min(4,z));$('#zl').textContent=Math.round(S.z*100)+'%';if(S.pdf)renderAll()}
+$('#zi').onclick=()=>zoom(S.z+.15);$('#zo').onclick=()=>zoom(S.z-.15);
+$('#fw').onclick=()=>{if(S.pages[0])zoom(($('#view').clientWidth-40)/S.pages[0].pw)};
+$('#th').onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).getPropertyValue('--bg').trim()==='#15201c';r.dataset.theme=d?'light':'dark'};
+
+/* ---- xuất PDF ---- */
+const hex=h=>{const n=parseInt(h.slice(1),16);return PDFLib.rgb((n>>16&255)/255,(n>>8&255)/255,(n&255)/255)};
+function toU(R,W,H,x,y){return R===0?[x,H-y]:R===90?[y,x]:R===180?[W-x,y]:[W-y,H-x]}
+async function build(pick){
+ const{PDFDocument,degrees}=PDFLib,doc=await PDFDocument.load(S.bytes,{ignoreEncryption:true}),pgs=doc.getPages();
+ for(const pg of S.pages){
+  const P=pgs[pg.src],cb=P.getCropBox(),W=cb.width,H=cb.height,ang=P.getRotation().angle,R=((ang+pg.rot)%360+360)%360;
+  const U=(x,y)=>{const q=toU(R,W,H,x,y);return{x:q[0]+cb.x,y:q[1]+cb.y}};
+  for(const a of pg.an){const col=hex(a.c),th=a.w;
+   const line=(p,q,w)=>P.drawLine({start:U(p[0],p[1]),end:U(q[0],q[1]),thickness:w,color:col,lineCap:PDFLib.LineCapStyle.Round});
+   if(a.t==='pen'){for(let k=1;k<a.pts.length;k++)line(a.pts[k-1],a.pts[k],th);if(a.pts.length===1)line(a.pts[0],[a.pts[0][0]+.1,a.pts[0][1]],th)}
+   else if(a.t==='line')line([a.x1,a.y1],[a.x2,a.y2],th);
+   else if(a.t==='arrow'){line([a.x1,a.y1],[a.x2,a.y2],th);arrowHead(a).forEach(h=>line(h,[a.x2,a.y2],th))}
+   else if(a.t==='text'){const m=tmeasure(a),k=4,cv=document.createElement('canvas');cv.width=Math.ceil(m.w*k)+8;cv.height=Math.ceil(m.h*k)+8;
+    const x=cv.getContext('2d');x.scale(k,k);x.fillStyle=a.c;x.font=fontOf(a);x.textBaseline='top';drawLines(x,a,m);
+    const img=await doc.embedPng(cv.toDataURL('image/png')),w=cv.width/k,h=cv.height/k;
+    const g=(a.ang||0)*Math.PI/180,o=U(a.x1-h*Math.sin(g),a.y1+h*Math.cos(g));
+    P.drawImage(img,{x:o.x,y:o.y,width:w,height:h,rotate:degrees(R-(a.ang||0)),opacity:a.op||1})}
+   else if(a.t==='img'){const im=await doc.embedPng(a.src),[l,t,r,b]=bounds(a),o=U(l,b);P.drawImage(im,{x:o.x,y:o.y,width:r-l,height:b-t,rotate:degrees(R)})}
+   else{const[l,t,r,b]=bounds(a),A=[l,t],B=[r,b];
+    const c=[[l,t],[r,t],[r,b],[l,b]];
+    if(a.t==='ul')line([l,b],[r,b],th);else if(a.t==='st')line([l,(t+b)/2],[r,(t+b)/2],th);
+    else if(a.t==='rect'){for(let k=0;k<4;k++)line(c[k],c[(k+1)%4],th)}
+    else if(a.t==='hl'||a.t==='redact'||a.t==='cover'){const u=c.map(p=>U(p[0],p[1])),xs=u.map(p=>p.x),ys=u.map(p=>p.y);
+     P.drawRectangle({x:Math.min(...xs),y:Math.min(...ys),width:Math.max(...xs)-Math.min(...xs),height:Math.max(...ys)-Math.min(...ys),color:a.t==='redact'?PDFLib.rgb(0,0,0):col,opacity:a.t==='hl'?.35:1})}
+    else if(a.t==='ellipse'){const n=48,pts=[];for(let k=0;k<=n;k++){const g=k/n*Math.PI*2;pts.push([(l+r)/2+(r-l)/2*Math.cos(g),(t+b)/2+(b-t)/2*Math.sin(g)])}
+     for(let k=1;k<pts.length;k++)line(pts[k-1],pts[k],th)}}
+  }}
+ const keep=new Set(S.pages.filter((_,i)=>!pick||pick.includes(i)).map(p=>p.src));
+ for(let i=pgs.length-1;i>=0;i--)if(!keep.has(i))doc.removePage(i);
+ S.pages.forEach(pg=>{const P=pgs[pg.src];if(pg.rot)P.setRotation(degrees(((P.getRotation().angle+pg.rot)%360)))});
+ return await doc.save();
+}
+$('#save').onclick=async()=>{
+ try{msg('Đang xuất PDF…');const bytes=await build();if(await localSave(bytes))return;const dl=await getDL();
+  if(!dl)return msg('Môi trường này chưa hỗ trợ tải tệp');
+  await dl.save({filename:S.name.replace(/\.pdf$/i,'')+'-da-sua.pdf',data:bytes});msg('Đã xuất tệp')
+ }catch(e){if(e&&e.code==='declined')return msg('Đã hủy lưu');console.error(e);msg('Không xuất được PDF')}};
+$('#print').onclick=async()=>{try{const b=await build(),u=URL.createObjectURL(new Blob([b],{type:'application/pdf'})),w=window.open(u);if(!w)msg('Trình duyệt chặn cửa sổ in — hãy dùng Lưu rồi in tệp')}catch(e){msg('Không thể in')}};
+/* ===== MỞ RỘNG: các chức năng còn lại ===== */
+S.imgs={};S.hits=[];S.hi=0;S.sig=null;
+const BS=String.fromCharCode(92);
+const base=()=>S.name.replace(/\.pdf$/i,'');
+const fmt=n=>n>1e6?(n/1e6).toFixed(2)+' MB':Math.round(n/1e3)+' KB';
+const redrawAll=()=>S.pages.forEach((_,i)=>redraw(i));
+const need=()=>S.pdf||(msg('Hãy mở tệp PDF trước'),false);
+function getImg(s){return S.imgs[s]||(S.imgs[s]=Object.assign(new Image(),{src:s}))}
+const readURL=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+function pickFiles(acc,multi){return new Promise(res=>{const f=document.createElement('input');f.type='file';f.accept=acc;f.multiple=!!multi;f.onchange=()=>res([...f.files]);f.click()})}
+function dlg(title,fields,ok,note){return new Promise(res=>{
+ const m=document.createElement('div');m.id='md';
+ m.innerHTML='<form><h3>'+title+'</h3>'+(note?'<p>'+note+'</p>':'')+fields.map(f=>'<label>'+f.l+(f.type==='select'?'<select name="'+f.n+'">'+f.o.map(o=>'<option'+(o===f.v?' selected':'')+'>'+o+'</option>').join('')+'</select>':f.type==='area'?'<textarea name="'+f.n+'" rows="3">'+(f.v||'')+'</textarea>':'<input name="'+f.n+'" type="'+(f.type||'text')+'" value="'+(f.v??'')+'">')+'</label>').join('')+'<div class="ac"><button type="button" class="x">Hủy</button><button class="ok">'+(ok||'OK')+'</button></div></form>';
+ document.body.append(m);const fm=m.querySelector('form'),done=v=>{m.remove();res(v)};
+ m.querySelector('.x').onclick=()=>done(null);m.onkeydown=e=>{if(e.key==='Escape')done(null)};
+ fm.onsubmit=e=>{e.preventDefault();done(Object.fromEntries(new FormData(fm)))};
+ const f=fm.querySelector('input,textarea,select');if(f)f.focus()})}
+async function saveFile(name,data){const dl=await getDL();if(!dl)return msg('Môi trường này chưa hỗ trợ tải tệp');
+ try{await dl.save({filename:name,data});msg('Đã xuất tệp')}catch(e){if(e&&e.code==='declined')msg('Đã hủy lưu');else{console.error(e);msg('Không lưu được tệp')}}}
+function parseR(s,n){const o=new Set();String(s).split(',').forEach(p=>{const m=p.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);if(!m)return;let a=+m[1],b=+(m[2]||m[1]);if(a>b)[a,b]=[b,a];for(let i=a;i<=b;i++)if(i>=1&&i<=n)o.add(i-1)});return[...o].sort((a,b)=>a-b)}
+
+/* văn bản gốc của PDF (cho Sửa & Tìm) */
+async function txFor(i){const pg=S.pages[i];if(!pg||!S.pdf)return;const p=await S.pdf.getPage(pg.src+1),v=p.getViewport({scale:1,rotation:(pg.base+pg.rot)%360}),tc=await p.getTextContent();
+ S.tx[i]=tc.items.filter(t=>t.str&&t.str.trim()).map(t=>{const m=pdfjsLib.Util.transform(v.transform,t.transform);return{s:t.str,x:m[4],b:m[5],w:t.width,h:Math.hypot(m[2],m[3]),up:Math.abs(m[1])<.01&&Math.abs(m[2])<.01}})}
+function editAt(i,x,y){const t=(S.tx[i]||[]).find(t=>t.up&&x>=t.x&&x<=t.x+t.w&&y>=t.b-t.h*.95&&y<=t.b+t.h*.3);
+ if(!t)return msg('Không có chữ gốc ở vị trí này (PDF dạng ảnh scan thì không sửa chữ được)');
+ openText(i,t.x,t.b-t.h*.88,{fs:t.h,c:'#000000',s:t.s,cv:{x1:t.x-1,y1:t.b-t.h*.98,x2:t.x+t.w+1,y2:t.b+t.h*.3}})}
+async function findText(){const r=await dlg('Tìm trong PDF',[{n:'q',l:'Từ khóa',v:S.q||''}],'Tìm');if(!r||!r.q)return;S.q=r.q;const q=r.q.toLowerCase();
+ await Promise.all(S.pages.map((_,i)=>S.tx[i]||txFor(i)));S.hits=[];
+ S.pages.forEach((_,i)=>(S.tx[i]||[]).forEach(t=>{const s=t.s.toLowerCase();let k=-1;while((k=s.indexOf(q,k+1))>=0)S.hits.push({p:i,l:t.x+t.w*k/s.length,t:t.b-t.h*.95,w:t.w*q.length/s.length,h:t.h*1.2})}));
+ S.hi=0;redrawAll();msg(S.hits.length?'Tìm thấy '+S.hits.length+' kết quả · Enter/F3: kết quả tiếp, Esc: xóa':'Không tìm thấy');jump()}
+function jump(){const h=S.hits[S.hi];if(!h)return;S.els[h.p].d.scrollIntoView({block:'start'});$('#view').scrollTop+=h.t*S.z-90;redrawAll()}
+document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||!S.hits.length)return;
+ if(e.key==='Enter'||e.key==='F3'){e.preventDefault();S.hi=(S.hi+1)%S.hits.length;jump()}else if(e.key==='Escape'){S.hits=[];redrawAll()}});
+
+/* ảnh, chữ ký, chấm bài */
+async function toPng(f){const u=await readURL(f),im=await new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src=u}),k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');
+ c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);return{src:c.toDataURL('image/png'),ar:c.height/c.width,w:c.width}}
+function placeImg(p,src,x,y,ar,w){snap();const pg=S.pages[p];w=Math.min(w,pg.pw*.8);pg.an.push({t:'img',src,ar,x1:x,y1:y,x2:x+w,y2:y+w*ar});S.sel={p,i:pg.an.length-1};redraw(p)}
+async function addPic(){const[f]=await pickFiles('image/*');if(!f)return;try{const m=await toPng(f),p=cp(),pg=S.pages[p],w=Math.min(m.w,pg.pw*.5);setTool('select');placeImg(p,m.src,(pg.pw-w)/2,pg.ph*.25,m.ar,w)}catch(e){msg('Không đọc được ảnh')}}
+function stamp(i,x,y,bad){snap();S.pages[i].an.push({t:'text',c:bad?'#dc2626':'#16a34a',w:1,x1:x-12,y1:y-16,fs:32,s:bad?'✗':'✓'});redraw(i)}
+function sigPad(){const m=document.createElement('div');m.id='md';
+ m.innerHTML='<form><h3>Vẽ chữ ký của bạn</h3><canvas width="460" height="180" style="background:#fff;border-radius:8px;touch-action:none;max-width:100%;cursor:crosshair"></canvas><div class="ac"><button type="button" class="c">Xóa</button><button type="button" class="x">Hủy</button><button class="ok">Dùng chữ ký</button></div></form>';
+ document.body.append(m);const cv=m.querySelector('canvas'),x=cv.getContext('2d');x.lineWidth=3;x.lineCap=x.lineJoin='round';x.strokeStyle='#111';let d=0,any=0;
+ const P=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+ cv.onpointerdown=e=>{d=any=1;const[a,b]=P(e);x.beginPath();x.moveTo(a,b);cv.setPointerCapture(e.pointerId)};
+ cv.onpointermove=e=>{if(d){const[a,b]=P(e);x.lineTo(a,b);x.stroke()}};cv.onpointerup=()=>d=0;
+ m.querySelector('.c').onclick=()=>{x.clearRect(0,0,cv.width,cv.height);any=0};
+ m.querySelector('.x').onclick=()=>m.remove();
+ m.querySelector('form').onsubmit=e=>{e.preventDefault();if(!any)return;
+  const W=cv.width,id=x.getImageData(0,0,W,cv.height).data;let a=W,b=cv.height,c=0,f=0;
+  for(let i=3;i<id.length;i+=4)if(id[i]){const k=(i-3)/4,px=k%W,py=(k/W)|0;a=Math.min(a,px);c=Math.max(c,px);b=Math.min(b,py);f=Math.max(f,py)}
+  const o=document.createElement('canvas');o.width=c-a+8;o.height=f-b+8;o.getContext('2d').drawImage(cv,a-4,b-4,o.width,o.height,0,0,o.width,o.height);
+  S.sig={src:o.toDataURL('image/png'),ar:o.height/o.width};m.remove();msg('Bấm vào trang để đặt chữ ký')}}
+
+/* công thức (LaTeX đơn giản → ký hiệu Unicode) */
+const SUP={0:'⁰',1:'¹',2:'²',3:'³',4:'⁴',5:'⁵',6:'⁶',7:'⁷',8:'⁸',9:'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾',n:'ⁿ',x:'ˣ'};
+const SUB={0:'₀',1:'₁',2:'₂',3:'₃',4:'₄',5:'₅',6:'₆',7:'₇',8:'₈',9:'₉','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎',a:'ₐ',e:'ₑ',n:'ₙ',x:'ₓ',i:'ᵢ',j:'ⱼ'};
+const SYM={alpha:'α',beta:'β',gamma:'γ',delta:'δ',pi:'π',theta:'θ',lambda:'λ',mu:'μ',sigma:'σ',omega:'ω',varphi:'φ',phi:'φ',Delta:'Δ',Omega:'Ω',Sigma:'Σ',sum:'∑',times:'×',cdot:'·',div:'÷',pm:'±',leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',infty:'∞',to:'→',Rightarrow:'⇒',Leftrightarrow:'⇔',in:'∈',subset:'⊂',cup:'∪',cap:'∩',angle:'∠',triangle:'△',perp:'⊥',parallel:'∥',circ:'°',degree:'°',int:'∫',forall:'∀',exists:'∃',sim:'∽',left:'',right:''};
+function tex(s){const w=t=>/^[\w.]+$/.test(t)?t:'('+t+')';
+ for(let n=0;n<5;n++)s=s.replace(/\\d?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g,(_,a,b)=>w(a)+'/'+w(b)).replace(/\\sqrt\s*\{([^{}]*)\}/g,(_,a)=>'√'+w(a)).replace(/\\overline\s*\{([^{}]*)\}/g,(_,a)=>[...a].map(c=>c+String.fromCharCode(773)).join(''));
+ s=s.replace(/\^\s*\{([^{}]*)\}|\^(\w)/g,(_,a,b)=>{const t=a??b;return[...t].every(c=>SUP[c])?[...t].map(c=>SUP[c]).join(''):'^('+t+')'}).replace(/_\s*\{([^{}]*)\}|_(\w)/g,(_,a,b)=>{const t=a??b;return[...t].every(c=>SUB[c])?[...t].map(c=>SUB[c]).join(''):'_('+t+')'});
+ return s.replace(/\\([a-zA-Z]+)/g,(_,n)=>SYM[n]??n).replace(/\\[,; ]/g,' ').replace(/[{}]/g,'')}
+async function formula(){const r=await dlg('Chèn công thức',[{n:'s',l:'Công thức (LaTeX đơn giản)',type:'area',v:'x^2 + y^2 = z^2'}],'Chèn','Hỗ trợ: '+BS+'frac{a}{b}, '+BS+'sqrt{x}, x^2, x_1, '+BS+'alpha, '+BS+'pi, '+BS+'leq, '+BS+'geq, '+BS+'neq, '+BS+'times, '+BS+'cdot, '+BS+'pm, '+BS+'triangle, '+BS+'angle, '+BS+'overline{AB}…');
+ if(!r)return;const p=cp(),pg=S.pages[p];setTool('select');snap();pg.an.push({t:'text',c:$('#col').value,w:1,x1:pg.pw*.2,y1:pg.ph*.3,fs:+$('#fs').value||18,ff:'"Cambria Math","Times New Roman",serif',s:tex(r.s)});S.sel={p,i:pg.an.length-1};redraw(p)}
+
+/* hình học */
+const poly=(n,r)=>Array.from({length:n+1},(_,i)=>[r*Math.sin(i*2*Math.PI/n),-r*Math.cos(i*2*Math.PI/n)]);
+const GEO={'Tam giác đều':s=>[poly(3,s*.6)],'Tam giác cân':s=>[[[-s*.5,0],[s*.5,0],[0,-s*.9],[-s*.5,0]]],'Tam giác vuông':s=>[[[0,0],[s,0],[0,-s*.75],[0,0]]],
+ 'Hình vuông':s=>[[[-s/2,-s/2],[s/2,-s/2],[s/2,s/2],[-s/2,s/2],[-s/2,-s/2]]],'Hình chữ nhật':s=>[[[-s*.7,-s*.4],[s*.7,-s*.4],[s*.7,s*.4],[-s*.7,s*.4],[-s*.7,-s*.4]]],
+ 'Hình thoi':s=>[poly(4,s*.6).map(p=>[p[0]*.7,p[1]])],'Hình thang':s=>[[[-s*.6,0],[s*.6,0],[s*.35,-s*.6],[-s*.35,-s*.6],[-s*.6,0]]],'Hình bình hành':s=>[[[-s*.6,0],[s*.4,0],[s*.6,-s*.6],[-s*.4,-s*.6],[-s*.6,0]]],
+ 'Ngũ giác đều':s=>[poly(5,s*.6)],'Lục giác đều':s=>[poly(6,s*.6)],'Đường tròn':s=>[Array.from({length:65},(_,i)=>[s*.5*Math.cos(i*Math.PI/32),s*.5*Math.sin(i*Math.PI/32)])],
+ 'Trục tọa độ Oxy':s=>[[[-s,0],[s,0],[s-9,-5],[s,0],[s-9,5]],[[0,s],[0,-s],[-5,-s+9],[0,-s],[5,-s+9]]]};
+async function geo(){const r=await dlg('Chèn hình học',[{n:'k',l:'Hình',type:'select',o:Object.keys(GEO)},{n:'s',l:'Kích thước',type:'number',v:160}],'Chèn','Dùng màu và độ dày nét đang chọn; hình được vẽ bằng nét nên kéo di chuyển được.');if(!r)return;
+ const p=cp(),pg=S.pages[p];setTool('select');snap();GEO[r.k](+r.s||160).forEach(pts=>pg.an.push({t:'pen',c:$('#col').value,w:+$('#lw').value||3,pts:pts.map(q=>[pg.pw/2+q[0],pg.ph*.35+q[1]])}));redraw(p)}
+async function video(){const r=await dlg('Chèn liên kết video',[{n:'u',l:'Địa chỉ video (URL)',v:'https://'},{n:'t',l:'Tiêu đề',v:'Xem video'}],'Chèn','PDF không phát video trực tiếp; trang sẽ có biểu tượng ▶ kèm đường link.');if(!r)return;
+ const p=cp(),pg=S.pages[p];setTool('select');snap();pg.an.push({t:'text',c:'#1d4ed8',w:1,x1:pg.pw*.15,y1:pg.ph*.3,fs:16,s:'▶ '+r.t+'\n'+r.u});S.sel={p,i:pg.an.length-1};redraw(p)}
+
+/* thao tác trang */
+async function reload(bytes){S.bytes=new Uint8Array(bytes);S.pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes)}).promise;S.pages=[];S.undo=[];S.redo=[];S.sel=null;S.hits=[];
+ for(let i=1;i<=S.pdf.numPages;i++){const p=await S.pdf.getPage(i),v=p.getViewport({scale:1});S.pages.push({src:i-1,rot:0,base:p.rotate,pw:v.width,ph:v.height,an:[]})}await renderAll();btns()}
+async function mergeIn(files,after){try{const{PDFDocument}=PDFLib,doc=await PDFDocument.load(await build());let at=after;
+ for(const f of files){const o=await PDFDocument.load(await f.arrayBuffer(),{ignoreEncryption:true});(await doc.copyPages(o,o.getPageIndices())).forEach(p=>doc.insertPage(at++,p))}
+ await reload(await doc.save());msg('Đã chèn. Các chỉnh sửa trước đó đã được áp vào tệp (không hoàn tác được)')}catch(e){console.error(e);msg('Không chèn được tệp này')}}
+async function insFile(){const f=await pickFiles('application/pdf');if(f.length)mergeIn(f,cp()+1)}
+async function merge(){const f=await pickFiles('application/pdf',true);if(f.length)mergeIn(f,S.pages.length)}
+async function blank(){const i=cp(),doc=await PDFLib.PDFDocument.load(await build()),s=doc.getPage(i).getSize();doc.insertPage(i+1,[s.width,s.height]);await reload(await doc.save());setTimeout(()=>go(i+1),300)}
+async function crop(){const r=await dlg('Cắt lề (mm) — áp dụng cho mọi trang',['t|Trên','r|Phải','b|Dưới','l|Trái'].map(s=>({n:s[0],l:s.slice(2),type:'number',v:10})),'Cắt','Các chỉnh sửa hiện có sẽ được áp vào tệp.');if(!r)return;
+ const k=72/25.4,[t,rr,b,l]=[r.t,r.r,r.b,r.l].map(v=>(+v||0)*k),doc=await PDFLib.PDFDocument.load(await build());
+ doc.getPages().forEach(P=>{const R=((P.getRotation().angle%360)+360)%360,c=P.getCropBox(),[T,Rt,B,L]={0:[t,rr,b,l],90:[rr,b,l,t],180:[b,l,t,rr],270:[l,t,rr,b]}[R]||[t,rr,b,l];P.setCropBox(c.x+L,c.y+B,Math.max(20,c.width-L-Rt),Math.max(20,c.height-T-B))});
+ await reload(await doc.save());msg('Đã cắt lề')}
+async function numbering(){const r=await dlg('Đánh số trang',[{n:'pos',l:'Vị trí',type:'select',o:['Dưới giữa','Dưới phải','Dưới trái','Trên giữa','Trên phải','Trên trái']},{n:'f',l:'Định dạng ({n} = số trang, {N} = tổng)',v:'Trang {n}/{N}'},{n:'s',l:'Bắt đầu từ',type:'number',v:1},{n:'fs',l:'Cỡ chữ',type:'number',v:12}],'Áp dụng');if(!r)return;
+ snap();const s0=+r.s||1,N=S.pages.length+s0-1;
+ S.pages.forEach((pg,i)=>{const a={t:'text',c:'#111111',w:1,ff:S.font,fs:+r.fs||12,s:r.f.replace(/\{n\}/g,s0+i).replace(/\{N\}/g,N),x1:0,y1:0},m=tmeasure(a),c=r.pos;
+  a.x1=c.includes('giữa')?(pg.pw-m.w)/2:c.includes('phải')?pg.pw-30-m.w:30;a.y1=c.startsWith('Dưới')?pg.ph-30-m.h:24;pg.an.push(a)});redrawAll()}
+async function wmark(){const r=await dlg('Watermark',[{n:'s',l:'Nội dung',v:'BẢN NHÁP'},{n:'fs',l:'Cỡ chữ',type:'number',v:72},{n:'op',l:'Độ đậm (%)',type:'number',v:20},{n:'ang',l:'Góc nghiêng (độ, âm = chéo lên)',type:'number',v:-45},{n:'c',l:'Màu',type:'color',v:'#888888'}],'Áp dụng');if(!r||!r.s)return;
+ snap();const g=(+r.ang||0)*Math.PI/180;
+ S.pages.forEach(pg=>{const a={t:'text',c:r.c,w:1,ff:S.font,fs:+r.fs||72,s:r.s,op:(+r.op||20)/100,ang:+r.ang||0,x1:0,y1:0},m=tmeasure(a);
+  a.x1=pg.pw/2-(m.w/2*Math.cos(g)-m.h/2*Math.sin(g));a.y1=pg.ph/2-(m.w/2*Math.sin(g)+m.h/2*Math.cos(g));pg.an.push(a)});redrawAll()}
+async function extract(){const r=await dlg('Trích xuất trang',[{n:'p',l:'Các trang (vd: 1-3,5)',v:'1'}],'Trích xuất');if(!r)return;const pick=parseR(r.p,S.pages.length);if(!pick.length)return msg('Danh sách trang không hợp lệ');
+ await saveFile(base()+'-trich-xuat.pdf',await build(pick))}
+async function split(){const r=await dlg('Tách PDF',[{n:'g',l:'Nhóm trang, cách nhau bởi dấu ; (vd: 1-2;3;4-5). Để trống = mỗi trang một tệp',v:''}],'Tách');if(!r)return;
+ const n=S.pages.length,gs=r.g.trim()?r.g.split(';').map(g=>parseR(g,n)).filter(g=>g.length):S.pages.map((_,i)=>[i]);if(!gs.length)return msg('Danh sách trang không hợp lệ');
+ msg('Đang tách…');const z=new JSZip();for(let k=0;k<gs.length;k++)z.file(base()+'-'+(k+1)+'.pdf',await build(gs[k]));await saveFile(base()+'-tach.zip',await z.generateAsync({type:'uint8array'}))}
+async function pageCanvas(i,k){const pg=S.pages[i],p=await S.pdf.getPage(pg.src+1),v=p.getViewport({scale:k,rotation:(pg.base+pg.rot)%360}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;
+ const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);await p.render({canvasContext:x,viewport:v}).promise;x.setTransform(k,0,0,k,0,0);pg.an.forEach(a=>drawA(x,a));return c}
+async function exportImgs(){const r=await dlg('Xuất ảnh',[{n:'f',l:'Định dạng',type:'select',o:['PNG','JPG']},{n:'k',l:'Tỉ lệ phóng (1–4)',type:'number',v:2}],'Xuất');if(!r)return;
+ const j=r.f==='JPG',mime=j?'image/jpeg':'image/png',k=Math.max(1,Math.min(4,+r.k||2));msg('Đang xuất ảnh…');const z=new JSZip();
+ for(let i=0;i<S.pages.length;i++)z.file(base()+'-trang-'+(i+1)+(j?'.jpg':'.png'),(await pageCanvas(i,k)).toDataURL(mime,.92).split(',')[1],{base64:true});
+ await saveFile(base()+'-anh.zip',await z.generateAsync({type:'uint8array'}))}
+async function compress(){const r=await dlg('Nén PDF',[{n:'q',l:'Chất lượng ảnh (%)',type:'number',v:60},{n:'d',l:'Độ phân giải (DPI)',type:'number',v:110}],'Nén','Mỗi trang được chuyển thành ảnh JPEG: dung lượng giảm mạnh nhưng chữ không còn chọn/tìm được nữa.');if(!r)return;
+ msg('Đang nén…');const doc=await PDFLib.PDFDocument.create(),k=(+r.d||110)/72;
+ for(let i=0;i<S.pages.length;i++){const pg=S.pages[i],c=await pageCanvas(i,k),img=await doc.embedJpg(c.toDataURL('image/jpeg',(+r.q||60)/100));doc.addPage([pg.pw,pg.ph]).drawImage(img,{x:0,y:0,width:pg.pw,height:pg.ph})}
+ const out=await doc.save();msg('Dung lượng: '+fmt(S.bytes.length)+' → '+fmt(out.length));await saveFile(base()+'-nen.pdf',out)}
+
+/* bảng lệnh ⌘, toàn màn hình, đóng tab */
+function palette(){const m=document.createElement('div');m.id='md';m.innerHTML='<form><input placeholder="Gõ tên chức năng…"><div class="ls"></div></form>';document.body.append(m);
+ const inp=m.querySelector('input'),ls=m.querySelector('.ls'),all=[...document.querySelectorAll('.row .b')].map(b=>({n:b.querySelector('span').textContent.replace(/ ·.*/,''),b}));
+ const draw=()=>{ls.innerHTML='';all.filter(c=>c.n.toLowerCase().includes(inp.value.toLowerCase())).forEach(c=>{const d=document.createElement('button');d.type='button';d.textContent=c.n;d.onclick=()=>{m.remove();c.b.click()};ls.append(d)})};
+ inp.oninput=draw;draw();inp.focus();m.onclick=e=>{if(e.target===m)m.remove()};m.onkeydown=e=>{if(e.key==='Escape')m.remove()};
+ m.querySelector('form').onsubmit=e=>{e.preventDefault();const f=ls.querySelector('button');if(f)f.click()}}
+
+/* chèn nút vào thanh công cụ theo đúng thứ tự trong ảnh */
+const Bt=(id,ic,l,t)=>'<button class="b'+(t?' tool':'')+'"'+(t?' data-t="'+t+'"':'')+(id?' id="'+id+'"':'')+'><i>'+ic+'</i><span>'+l+'</span></button>';
+const after=(sel,h)=>document.querySelector(sel).insertAdjacentHTML('afterend',h);
+after('[data-t=hand]',Bt('','✏️','Sửa · E','edit'));
+after('[data-t=text]',Bt('fm','∑','Công thức')+Bt('geo','📐','Hình học')+Bt('gif','🧭','Hình động')+Bt('pic','🖼️','Ảnh')+Bt('vid','🎬','Video'));
+after('[data-t=hl]',Bt('','🟨','Tô sáng','hy'));
+after('[data-t=redact]',Bt('','✍️','Chữ ký','sign'));
+document.querySelector('[data-t=redact]').parentElement.insertAdjacentHTML('afterend','<div class="grp">'+Bt('','✅','Chấm bài','check')+Bt('find','🔍','Tìm')+'</div>');
+after('#dp',Bt('ext','📤','Trích xuất')+Bt('ins','📥','Chèn tệp')+Bt('bl','📄','Trang trắng')+Bt('cr','✂️','Cắt lề')+Bt('num','#️⃣','Đánh số')+Bt('spl','🔨','Tách')+Bt('mrg','🔗','Ghép')+Bt('cmp','🗜️','Nén PDF')+Bt('wm','💧','Watermark')+Bt('xi','🖼️','Xuất ảnh'));
+after('#fw','<button id="fp" title="Vừa cả trang">⤢</button><button id="fsb" title="Toàn màn hình">⛶</button>');
+after('#th','<button id="cmd" title="Tìm chức năng">⌘</button>');
+$('#tab').insertAdjacentHTML('afterend','<button id="tx" title="Đóng tệp">✕</button><button id="tp" title="Mở tệp khác">＋</button>');
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+const on=(id,f)=>$('#'+id).onclick=()=>need()&&f();
+on('fm',formula);on('geo',geo);on('gif',addPic);on('pic',addPic);on('vid',video);on('find',findText);on('ext',extract);on('ins',insFile);on('bl',blank);on('cr',crop);on('num',numbering);on('spl',split);on('mrg',merge);on('cmp',compress);on('wm',wmark);on('xi',exportImgs);
+$('#cmd').onclick=palette;$('#tp').onclick=pick;
+$('#fp').onclick=()=>{const p=S.pages[S.els.length?cp():0];if(p){const v=$('#view');zoom(Math.min((v.clientWidth-40)/p.pw,(v.clientHeight-40)/p.ph))}};
+$('#fsb').onclick=()=>{const d=document;if(d.fullscreenElement)d.exitFullscreen();else if(d.documentElement.requestFullscreen)d.documentElement.requestFullscreen().catch(()=>msg('Trình duyệt không cho phép toàn màn hình ở đây'))};
+$('#tx').onclick=async()=>{if(!S.pdf)return;if(!await dlg('Đóng tệp?',[],'Đóng','Các chỉnh sửa chưa lưu sẽ mất.'))return;S.pdf=null;S.pages=[];S.els=[];S.bytes=null;$('#pages').innerHTML='';$('#empty').style.display='flex';$('#tab').textContent='● Chưa mở tệp';$('#pt').textContent='/ 0';btns()};
+
+/* ===== B / I / U ===== */
+S.fb=S.fi=S.fu=false;
+function fontOf(a){return (a.i?'italic ':'')+(a.b?'bold ':'')+a.fs+'px '+(a.ff||FONT)}
+function drawLines(x,a,m){m.L.forEach((s,i)=>{const y=i*a.fs*1.25;x.fillText(s,0,y);if(a.u)x.fillRect(0,y+a.fs*1.08,x.measureText(s).width,Math.max(1,a.fs/15))})}
+$('#fs').parentElement.insertAdjacentHTML('afterend','<button id="tgB" title="Đậm"><b>B</b></button><button id="tgI" title="Nghiêng"><i style="font-family:serif">I</i></button><button id="tgU" title="Gạch chân"><u>U</u></button>');
+[['tgB','b','fb'],['tgI','i','fi'],['tgU','u','fu']].forEach(([id,k,f])=>$('#'+id).onclick=()=>{S[f]=!S[f];$('#'+id).classList.toggle('on',S[f]);
+ const a=S.sel&&S.pages[S.sel.p].an[S.sel.i];if(a&&a.t==='text'){snap();a[k]=S[f];redraw(S.sel.p)}});
+/* ===== tải tệp: trong claude.ai dùng capability, ngoài đời dùng tải thường ===== */
+const localDL={save:async({filename,data})=>{const b=data instanceof Blob?data:new Blob([data]),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}};
+async function getDL(){return typeof claude!=='undefined'?await claude.use('downloads'):localDL}
+async function localSave(bytes){const L=window.__LOCAL__;if(!L||!L.has)return false;
+ const r=await dlg('Lưu tệp',[{n:'m',l:'Cách lưu',type:'select',o:['Ghi đè tệp gốc','Lưu bản sao cạnh tệp gốc (-da-sua.pdf)','Tải về thư mục khác…'],v:'Ghi đè tệp gốc'}],'Lưu');
+ if(!r)return true;if(r.m.startsWith('Tải'))return false;
+ try{const res=await fetch('/__save__?t='+L.token+'&mode='+(r.m.startsWith('Ghi')?'over':'copy'),{method:'POST',body:bytes}),j=await res.json().catch(()=>({}));msg(res.ok?'Đã lưu: '+j.path:'Không lưu được: '+(j.error||res.status))}catch(e){msg('Không lưu được tệp')}return true}
+const FONTS={'Mặc định (Segoe UI/Arial)':FONT,'Times New Roman':'"Times New Roman",Times,serif','Arial':'Arial,Helvetica,sans-serif','Calibri':'Calibri,"Segoe UI",sans-serif','Cambria':'Cambria,Georgia,serif','Georgia':'Georgia,serif','Verdana':'Verdana,sans-serif','Tahoma':'Tahoma,sans-serif','Courier New':'"Courier New",monospace','Comic Sans MS':'"Comic Sans MS",cursive'};
+S.font=FONT;
+function applyPrefs(d){if(!d)return;if(FONTS[d.fn])S.font=FONTS[d.fn];if(d.fs)$('#fs').value=d.fs;if(d.c)$('#col').value=d.c}
+try{applyPrefs(JSON.parse(localStorage.getItem('pdfed-pref')||'null'))}catch(e){}
+async function settings(){const cur=Object.keys(FONTS).find(k=>FONTS[k]===S.font)||Object.keys(FONTS)[0];
+ const r=await dlg('Cài đặt mặc định',[{n:'fn',l:'Font chữ',type:'select',o:Object.keys(FONTS),v:cur},{n:'fs',l:'Cỡ chữ',type:'number',v:$('#fs').value},{n:'c',l:'Màu chữ (cũng là màu nét vẽ)',type:'color',v:$('#col').value}],'Lưu','Áp dụng cho chữ thêm mới (Chữ, Sửa, Đánh số, Watermark). Chữ đã có trên trang không đổi. Cài đặt được nhớ cho lần mở sau.');
+ if(!r)return;S.font=FONTS[r.fn];$('#fs').value=Math.max(8,Math.min(120,+r.fs||18));$('#col').value=r.c;
+ const pf={fn:r.fn,fs:$('#fs').value,c:r.c};try{localStorage.setItem('pdfed-pref',JSON.stringify(pf))}catch(e){}if(window.__LOCAL__)fetch('/__prefs__?t='+window.__LOCAL__.token,{method:'POST',body:JSON.stringify(pf)}).catch(()=>{});msg('Đã lưu cài đặt mặc định')}
+$('#xi').parentElement.insertAdjacentHTML('afterend','<div class="grp">'+Bt('set','⚙️','Mặc định')+'</div>');
+$('#set').onclick=settings;
+(async()=>{const L=window.__LOCAL__;if(!L)return;
+ const q=p=>p+'?t='+L.token;setInterval(()=>fetch(q('/__ping__')).catch(()=>{}),5000);fetch(q('/__ping__')).catch(()=>{});
+ addEventListener('pagehide',()=>navigator.sendBeacon(q('/__bye__'),''));
+ try{applyPrefs(await (await fetch(q('/__prefs__'))).json())}catch(e){}
+ if(L.has){try{const r=await fetch(q('/__file__'));if(r.ok){const b=await r.blob();await loadFile(new File([b],decodeURIComponent(r.headers.get('X-Name')||'tai-lieu.pdf'),{type:'application/pdf'}))}}catch(e){msg('Không mở được tệp')}}})();
+setTool('select');btns();
+</script>
+</body>
+</html>
