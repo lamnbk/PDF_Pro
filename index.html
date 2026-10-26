@@ -55,6 +55,33 @@ body{background:var(--bg);color:var(--ink);font:14px/1.3 "Segoe UI",system-ui,Ar
 #md .ac .ok{background:var(--acc);color:var(--accfg);font-weight:600}
 #md .ls{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow:auto}#md .ls button{text-align:left}
 .ctl button.on{background:var(--acc);color:var(--accfg)}
+#md label:has(input[type=checkbox]){flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:8px;color:var(--ink)}
+#md input[type=checkbox]{width:18px;height:18px;padding:0}
+/* --- giao diện 3D gọn, tối đa 3 dòng --- */
+:root{--g1:#ffffff;--g2:#d9eae2;--gs:#a6c0b4;--gh:#c9e3d8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--g1:#33504a;--g2:#1d302a;--gs:#0a110e;--gh:#3d5f56}}
+:root[data-theme="dark"]{--g1:#33504a;--g2:#1d302a;--gs:#0a110e;--gh:#3d5f56}
+.bar{background:linear-gradient(var(--bar),var(--bg))}
+.row{flex-wrap:nowrap;overflow-x:auto;gap:0;padding:3px 8px 1px;scrollbar-width:thin}
+.grp{flex:none;flex-wrap:nowrap;gap:2px;padding-right:6px;margin-right:5px}
+.b{flex:none;min-width:40px;padding:3px 4px 2px;margin:1px 0 4px;gap:0;border-radius:8px;border:1px solid var(--line);
+ background:linear-gradient(180deg,var(--g1),var(--g2));box-shadow:0 2px 0 var(--gs),0 3px 5px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.7);transition:transform .07s,box-shadow .07s}
+.b i{font-size:15px;line-height:18px;height:18px}
+.b span{font-size:9.5px;line-height:1.15}
+.b:hover{background:linear-gradient(180deg,var(--g1),var(--gh));transform:translateY(-1px)}
+.b:active,.b.on{transform:translateY(2px);box-shadow:inset 0 2px 5px rgba(0,0,0,.4),0 0 0 rgba(0,0,0,0)}
+.b.on{background:linear-gradient(180deg,var(--acc),color-mix(in srgb,var(--acc) 65%,#000));border-color:transparent}
+.b:disabled{box-shadow:none;transform:none;background:var(--g2)}
+.ctl{flex-wrap:nowrap;overflow-x:auto;gap:4px;padding:1px 8px 5px}
+.ctl>*{flex:none}
+.ctl button{min-width:28px;height:26px;padding:0 6px;font-size:14px;border:1px solid var(--line);border-radius:7px;
+ background:linear-gradient(180deg,var(--g1),var(--g2));box-shadow:0 2px 0 var(--gs),inset 0 1px 0 rgba(255,255,255,.7);margin-bottom:2px}
+.ctl button:hover{background:linear-gradient(180deg,var(--g1),var(--gh))}
+.ctl button:active{transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
+.ctl button.on{background:linear-gradient(180deg,var(--acc),color-mix(in srgb,var(--acc) 65%,#000));color:var(--accfg)}
+.ctl input[type=number]{width:48px;padding:3px 5px;box-shadow:inset 0 1px 3px rgba(0,0,0,.2)}
+.ctl input[type=color]{width:30px;height:26px;box-shadow:inset 0 1px 3px rgba(0,0,0,.2)}
+.zl{min-width:42px}
 </style>
 </head>
 <body>
@@ -183,7 +210,7 @@ function redraw(i,tmp){
 }
 
 /* ---- công cụ ---- */
-const DRAW=['erase','rect','ellipse','line','arrow','hl','hy','ul','st','redact','pen'];
+const DRAW=['brush','erase','rect','ellipse','line','arrow','hl','hy','ul','st','redact','pen'];
 function setTool(t){if(t==='sign'&&!S.sig)sigPad();S.tool=t;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
  document.querySelectorAll('.o').forEach(o=>o.style.cursor=t==='hand'?'grab':t==='select'?'default':t==='text'?'text':'crosshair');S.sel=null;S.pages.forEach((_,i)=>redraw(i))}
 document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
@@ -199,10 +226,11 @@ function bind(o,i){
    S.sel=h>=0?{p:i,i:h}:null;S.pages.forEach((_,k)=>redraw(k));if(h>=0)drag={x,y,moved:false};return}
   if(t==='text'){openText(i,x,y);return}
   if(t==='edit'){editAt(i,x,y);return}
+  if(t==='pick'){pickColorAt(i,x,y);return}
   if(t==='check'){stamp(i,x,y,e.shiftKey);return}
   if(t==='sign'){if(S.sig){setTool('select');placeImg(i,S.sig.src,x-70,y-30,S.sig.ar,140)}else sigPad();return}
   const c=$('#col').value,w=+$('#lw').value||3;
-  if(!DRAW.includes(t))return;cur=t==='pen'?{t,c,w,pts:[[x,y]]}:t==='hy'?{t:'hl',c:'#ffe600',w:1,x1:x,y1:y,x2:x,y2:y}:{t,c,w:t==='hl'?1:w,x1:x,y1:y,x2:x,y2:y};
+  if(!DRAW.includes(t))return;cur=t==='brush'?{t:'pen',c:bgAt(i,x,y),w:Math.max(12,w*4),pts:[[x,y]]}:t==='pen'?{t,c,w,pts:[[x,y]]}:t==='hy'?{t:'hl',c:'#ffe600',w:1,x1:x,y1:y,x2:x,y2:y}:{t,c,w:t==='hl'?1:w,x1:x,y1:y,x2:x,y2:y};
  };
  o.onpointermove=e=>{
   if(pan){const v=$('#view');v.scrollLeft=pan.l-(e.clientX-pan.x);v.scrollTop=pan.t-(e.clientY-pan.y);return}
@@ -312,7 +340,7 @@ const readURL=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.re
 function pickFiles(acc,multi){return new Promise(res=>{const f=document.createElement('input');f.type='file';f.accept=acc;f.multiple=!!multi;f.onchange=()=>res([...f.files]);f.click()})}
 function dlg(title,fields,ok,note){return new Promise(res=>{
  const m=document.createElement('div');m.id='md';
- m.innerHTML='<form><h3>'+title+'</h3>'+(note?'<p>'+note+'</p>':'')+fields.map(f=>'<label>'+f.l+(f.type==='select'?'<select name="'+f.n+'">'+f.o.map(o=>'<option'+(o===f.v?' selected':'')+'>'+o+'</option>').join('')+'</select>':f.type==='area'?'<textarea name="'+f.n+'" rows="3">'+(f.v||'')+'</textarea>':'<input name="'+f.n+'" type="'+(f.type||'text')+'" value="'+(f.v??'')+'">')+'</label>').join('')+'<div class="ac"><button type="button" class="x">Hủy</button><button class="ok">'+(ok||'OK')+'</button></div></form>';
+ m.innerHTML='<form><h3>'+title+'</h3>'+(note?'<p>'+note+'</p>':'')+fields.map(f=>'<label>'+f.l+(f.type==='select'?'<select name="'+f.n+'">'+f.o.map(o=>'<option'+(o===f.v?' selected':'')+'>'+o+'</option>').join('')+'</select>':f.type==='check'?'<input name="'+f.n+'" type="checkbox"'+(f.v?' checked':'')+'>':f.type==='area'?'<textarea name="'+f.n+'" rows="3">'+(f.v||'')+'</textarea>':'<input name="'+f.n+'" type="'+(f.type||'text')+'" value="'+(f.v??'')+'">')+'</label>').join('')+'<div class="ac"><button type="button" class="x">Hủy</button><button class="ok">'+(ok||'OK')+'</button></div></form>';
  document.body.append(m);const fm=m.querySelector('form'),done=v=>{m.remove();res(v)};
  m.querySelector('.x').onclick=()=>done(null);m.onkeydown=e=>{if(e.key==='Escape')done(null)};
  fm.onsubmit=e=>{e.preventDefault();done(Object.fromEntries(new FormData(fm)))};
@@ -471,6 +499,127 @@ $('#set').onclick=settings;
  addEventListener('pagehide',()=>navigator.sendBeacon(q('/__bye__'),''));
  try{applyPrefs(await (await fetch(q('/__prefs__'))).json())}catch(e){}
  if(L.has){try{const r=await fetch(q('/__file__'));if(r.ok){const b=await r.blob();await loadFile(new File([b],decodeURIComponent(r.headers.get('X-Name')||'tai-lieu.pdf'),{type:'application/pdf'}))}}catch(e){msg('Không mở được tệp')}}})();
+/* ===== XÓA WATERMARK / CHỮ VIẾT TAY ===== */
+/*TEST-START*/
+const mulM=(m,n)=>[m[0]*n[0]+m[1]*n[2],m[0]*n[1]+m[1]*n[3],m[2]*n[0]+m[3]*n[2],m[2]*n[1]+m[3]*n[3],m[4]*n[0]+m[5]*n[2]+n[4],m[4]*n[1]+m[5]*n[3]+n[5]];
+function b2s(u){let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return s}
+function s2b(s){const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i)&255;return u}
+function pageStreams(doc,P){const{PDFArray,PDFStream}=PDFLib,c=P.node.Contents();if(!c)return[];const a=c instanceof PDFArray?c.asArray().map(r=>doc.context.lookup(r)):[c];return a.filter(x=>x instanceof PDFStream)}
+function pageText(doc,P){return pageStreams(doc,P).map(s=>b2s(s.getUnencodedContents?s.getUnencodedContents():PDFLib.decodePDFRawStream(s).decode())).join('\n')}
+function pageXObjs(doc,P){const{PDFName,PDFDict}=PDFLib,r=P.node.normalizedEntries().Resources,xo=r&&r.lookup(PDFName.of('XObject')),out={};
+ if(xo instanceof PDFDict)for(const[k,v]of xo.entries()){const o=doc.context.lookup(v);if(o&&o.dict){const st=o.dict.lookup(PDFName.of('Subtype'));out[k.decodeText()]={img:!!st&&String(st)==='/Image',sm:!!o.dict.get(PDFName.of('SMask'))}}}
+ return out}
+function scanOps(txt,xo){const ops=[],st=[];let m=[1,0,0,1,0,0],x;
+ const re=/\/([^\s\/\[\]()<>]+)\s+Do\b|(-?[\d.]+(?:\s+-?[\d.]+){5})\s+cm\b|(?<![\w\/])q(?![\w])|(?<![\w\/])Q(?![\w])/g;
+ while((x=re.exec(txt))){
+  if(x[1]){const o=xo[x[1]];if(o&&o.img){const w=Math.hypot(m[0],m[1]);ops.push({idx:x.index,len:x[0].length,sm:o.sm,x:m[4],y:m[5],w,key:Math.round(m[4])+':'+Math.round(m[5])+':'+Math.round(w)})}}
+  else if(x[2])m=mulM(x[2].split(/\s+/).map(Number),m);
+  else if(x[0]==='q')st.push(m);else m=st.pop()||m}
+ return ops}
+const colOf=b=>{const c=b.match(/(\S+\s+\S+\s+\S+)\s+rg\b/);return c?c[1].replace(/\s+/g,' '):null};
+function scanDoc(doc){const pgs=doc.getPages(),G=new Map(),C=new Map();
+ pgs.forEach((P,i)=>{const txt=pageText(doc,P),xo=pageXObjs(doc,P);
+  scanOps(txt,xo).forEach(o=>{let g=G.get(o.key);if(!g)G.set(o.key,g={key:o.key,pages:new Set(),sm:false,x:o.x,y:o.y,w:o.w});g.pages.add(i);g.sm=g.sm||o.sm});
+  (txt.match(/BT\b[\s\S]*?\bET\b/g)||[]).forEach(b=>{const c=colOf(b);if(c)C.set(c,(C.get(c)||0)+1)})});
+ const n=pgs.length,min=Math.max(2,Math.ceil(n*.5));
+ return{n,groups:[...G.values()].filter(g=>g.pages.size>=min),colors:[...C].map(([k,c])=>({k,n:c})).sort((a,b)=>a.n-b.n).slice(0,6)}}
+function stripDoc(doc,keys,cols){const{PDFName}=PDFLib;let n=0;
+ doc.getPages().forEach(P=>{let txt=pageText(doc,P);if(!txt)return;const before=txt;
+  scanOps(txt,pageXObjs(doc,P)).filter(o=>keys.has(o.key)).forEach(o=>{txt=txt.slice(0,o.idx)+' '.repeat(o.len)+txt.slice(o.idx+o.len);n++});
+  if(cols.size)txt=txt.replace(/BT\b[\s\S]*?\bET\b/g,b=>{const c=colOf(b);if(c&&cols.has(c)){n++;return' '}return b});
+  if(txt!==before)P.node.set(PDFName.of('Contents'),doc.context.register(doc.context.flateStream(s2b(txt))))});
+ return n}
+/*TEST-END*/
+const rgbName=k=>'rgb('+k.split(' ').map(v=>Math.round(parseFloat(v)*255)).join(', ')+')';
+async function removeWM(){
+ const doc=await PDFLib.PDFDocument.load(await build()),{n,groups,colors}=scanDoc(doc);
+ if(!groups.length&&!colors.length)return msg('Không tìm thấy ảnh hay chữ lặp lại để xóa (có thể PDF là bản scan: hãy dùng Tẩy hoặc Xóa màu)');
+ const fields=[...groups.map((g,i)=>({n:'g'+i,type:'check',v:g.sm,l:'Ảnh '+(g.sm?'nền trong suốt ':'')+'rộng '+Math.round(g.w)+'pt tại ('+Math.round(g.x)+', '+Math.round(g.y)+') · '+g.pages.size+'/'+n+' trang'})),
+  ...colors.map((c,i)=>({n:'c'+i,type:'check',v:false,l:'Chữ '+rgbName(c.k)+' · '+c.n+' ô chữ (có thể gồm cả chữ nội dung)'}))];
+ const r=await dlg('Xóa watermark',fields,'Xóa','Tìm ảnh lặp lại cùng vị trí ở nhiều trang (thường là watermark), ảnh nền trong suốt được chọn sẵn. Bên dưới là các màu chữ để bạn chọn thêm nếu cần.');
+ if(!r)return;
+ const keys=new Set(groups.filter((g,i)=>r['g'+i]).map(g=>g.key)),cols=new Set(colors.filter((c,i)=>r['c'+i]).map(c=>c.k));
+ if(!keys.size&&!cols.size)return;
+ const cnt=stripDoc(doc,keys,cols);await reload(await doc.save());
+ msg('Đã gỡ '+cnt+' đối tượng. Các chỉnh sửa trước đó đã được áp vào tệp')}
+
+/* Tẩy: tô lại bằng màu nền xung quanh */
+const pcv=i=>S.els[i].d.querySelector('canvas');
+function bgAt(i,x,y){try{const c=pcv(i),k=c.width/S.pages[i].pw,r=15,cx=Math.round(x*k),cy=Math.round(y*k),x0=Math.max(0,cx-r),y0=Math.max(0,cy-r),
+ d=c.getContext('2d').getImageData(x0,y0,Math.min(c.width-x0,2*r),Math.min(c.height-y0,2*r)).data;let mx=0,R=0,G=0,B=0,n=0;
+ for(let j=0;j<d.length;j+=4)mx=Math.max(mx,d[j]+d[j+1]+d[j+2]);
+ for(let j=0;j<d.length;j+=4)if(d[j]+d[j+1]+d[j+2]>=mx-30){R+=d[j];G+=d[j+1];B+=d[j+2];n++}
+ return'#'+[R,G,B].map(v=>Math.round(v/n).toString(16).padStart(2,'0')).join('')}catch(e){return'#ffffff'}}
+/* Xóa theo màu (bản scan, chữ viết tay có màu) */
+async function pickColorAt(i,x,y){const c=pcv(i),k=c.width/S.pages[i].pw,d=c.getContext('2d').getImageData(Math.round(x*k)-1,Math.round(y*k)-1,3,3).data;let R=0,G=0,B=0;
+ for(let j=0;j<36;j+=4){R+=d[j];G+=d[j+1];B+=d[j+2]}
+ const hex='#'+[R,G,B].map(v=>Math.round(v/9).toString(16).padStart(2,'0')).join('');
+ const r=await dlg('Xóa theo màu',[{n:'c',l:'Màu cần xóa (lấy từ điểm bạn vừa bấm)',type:'color',v:hex},{n:'t',l:'Độ nhạy (10–150, càng lớn xóa càng rộng)',type:'number',v:70},{n:'s',l:'Phạm vi',type:'select',o:['Chỉ trang này','Tất cả các trang']}],'Xóa','Trang được chọn sẽ chuyển thành ảnh (chữ không còn chọn/tìm được). Chữ in cùng màu cũng bị xóa.');
+ if(r)await removeColor(r.c,+r.t||70,r.s==='Tất cả các trang'?S.pages.map((_,j)=>j):[i])}
+async function removeColor(hex,tol,idx){msg('Đang xử lý…');const n=parseInt(hex.slice(1),16),tr=n>>16&255,tg=n>>8&255,tb=n&255,t2=tol*tol,k=150/72,set=new Set(idx),
+ src=await PDFLib.PDFDocument.load(await build()),out=await PDFLib.PDFDocument.create();
+ for(let i=0;i<S.pages.length;i++){
+  if(!set.has(i)){const[cp]=await out.copyPages(src,[i]);out.addPage(cp);continue}
+  const pg=S.pages[i],c=await pageCanvas(i,k),x=c.getContext('2d'),im=x.getImageData(0,0,c.width,c.height),d=im.data,h=new Map();
+  for(let j=0;j<d.length;j+=4)if(d[j]+d[j+1]+d[j+2]>600){const q=(d[j]>>3)<<10|(d[j+1]>>3)<<5|(d[j+2]>>3);h.set(q,(h.get(q)||0)+1)}
+  let bq=0,bc=0;h.forEach((v,q)=>{if(v>bc){bc=v;bq=q}});
+  const br=bc?((bq>>10)&31)*8+4:255,bg=bc?((bq>>5)&31)*8+4:255,bb=bc?(bq&31)*8+4:255;
+  for(let j=0;j<d.length;j+=4){const a=d[j]-tr,b=d[j+1]-tg,e=d[j+2]-tb;if(a*a+b*b+e*e<t2){d[j]=br;d[j+1]=bg;d[j+2]=bb}}
+  x.putImageData(im,0,0);
+  const img=await out.embedJpg(c.toDataURL('image/jpeg',.9));out.addPage([pg.pw,pg.ph]).drawImage(img,{x:0,y:0,width:pg.pw,height:pg.ph})}
+ await reload(await out.save());msg('Đã xóa theo màu. Các chỉnh sửa trước đó đã được áp vào tệp')}
+after('[data-t=sign]',Bt('','🩹','Tẩy','brush')+Bt('','🎨','Xóa màu','pick')+Bt('rmw','🧹','Xóa watermark'));
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+on('rmw',removeWM);
+/* ===== ĐẦU / CHÂN TRANG + BỐ TRÍ THANH CÔNG CỤ ===== */
+async function headFoot(){
+ await Promise.all(S.pages.map((_,i)=>S.tx[i]||txFor(i)));
+ const n=S.pages.length,cnt=new Map(),key=t=>t.s+'|'+Math.round(t.x)+'|'+Math.round(t.b);
+ S.pages.forEach((pg,i)=>{const seen=new Set();(S.tx[i]||[]).forEach(t=>{if(t.b<pg.ph*.18||t.b>pg.ph*.82){const k=key(t);if(!seen.has(k)){seen.add(k);cnt.set(k,(cnt.get(k)||0)+1)}}})});
+ let top=0,bot=0;
+ S.pages.forEach((pg,i)=>(S.tx[i]||[]).forEach(t=>{if((cnt.get(key(t))||0)>=Math.max(2,n*.6)){if(t.b<pg.ph*.18)top=Math.max(top,t.b+t.h*.4);else if(t.b>pg.ph*.82)bot=Math.max(bot,pg.ph-(t.b-t.h))}}));
+ const mm=v=>v?Math.ceil(v*25.4/72)+2:15;
+ const r=await dlg('Xóa đầu trang / chân trang',[{n:'th',l:'Chiều cao đầu trang (mm)',type:'number',v:mm(top)},{n:'bh',l:'Chiều cao chân trang (mm)',type:'number',v:mm(bot)},{n:'s',l:'Phạm vi',type:'select',o:['Tất cả các trang','Chỉ trang này']}],'Xóa',
+  (top||bot?'Đã tự đề xuất theo chữ lặp lại ở nhiều trang. ':'')+'Vùng được phủ bằng màu nền của trang (hoàn tác được); nội dung bên dưới vẫn còn trong tệp. Đặt 0 nếu không muốn xóa phần đó.');
+ if(!r)return;const t=(+r.th||0)*72/25.4,b=(+r.bh||0)*72/25.4,idx=r.s==='Chỉ trang này'?[cp()]:S.pages.map((_,i)=>i);
+ if(t<=0&&b<=0)return;snap();S.sel=null;
+ idx.forEach(i=>{const pg=S.pages[i];
+  if(b>0)pg.an.unshift({t:'cover',c:bgAt(i,pg.pw/2,pg.ph-b/2),w:1,x1:0,y1:pg.ph-b,x2:pg.pw,y2:pg.ph});
+  if(t>0)pg.an.unshift({t:'cover',c:bgAt(i,pg.pw/2,t/2),w:1,x1:0,y1:0,x2:pg.pw,y2:t})});
+ redrawAll();msg('Đã xóa đầu/chân trang')}
+$('#xi').insertAdjacentHTML('afterend',Bt('hf','📑','Đầu/Chân trang'));
+on('hf',headFoot);
+$('#find').parentElement.append($('#rmw'));
+$('.bar .row').append($('#find').parentElement,$('#set').parentElement);
+document.querySelectorAll('.b').forEach(b=>b.title=b.querySelector('span').textContent.replace(/ ·.*/,''));
+/* ===== XÓA THEO CỤM TỪ ===== */
+/*T4-START*/
+function findPhrase(tx,q,cs,wholeLine){const norm=s=>{s=s.normalize('NFC').replace(/\s+/g,' ');return cs?s:s.toLowerCase()},Q=norm(q.trim()),out=[];if(!Q)return out;
+ const items=(tx||[]).filter(t=>t.up).slice().sort((a,b)=>a.b-b.b||a.x-b.x),lines=[];
+ items.forEach(t=>{const L=lines.find(l=>Math.abs(l.b-t.b)<Math.max(2,t.h*.35));if(L)L.it.push(t);else lines.push({b:t.b,it:[t]})});
+ lines.forEach(L=>{L.it.sort((a,b)=>a.x-b.x);let s='';const map=[];
+  L.it.forEach((t,k)=>{if(k){const p=L.it[k-1];if(t.x-(p.x+p.w)>p.h*.2){s+=' ';map.push(null)}}
+   const str=t.s.normalize('NFC');[...str].forEach((ch,c)=>{const n=norm(ch);for(const z of n){s+=z;map.push({t,c,n:str.length})}})});
+  let k=-1;while((k=s.indexOf(Q,k+1))>=0){const seg=map.slice(k,k+Q.length).filter(Boolean);if(!seg.length){k+=Q.length-1;continue}
+   const f=seg[0],l=seg[seg.length-1],h=Math.max(...seg.map(m=>m.t.h));
+   const x1=wholeLine?L.it[0].x:f.t.x+f.t.w*f.c/f.n,x2=wholeLine?Math.max(...L.it.map(t=>t.x+t.w)):l.t.x+l.t.w*(l.c+1)/l.n;
+   out.push({x1:x1-1,x2:x2+1,y1:L.b-h*.98,y2:L.b+h*.3});if(wholeLine)break;k+=Q.length-1}});
+ return out}
+/*T4-END*/
+async function delPhrase(){
+ await Promise.all(S.pages.map((_,i)=>S.tx[i]||txFor(i)));
+ if(!S.tx.some(a=>a&&a.length))return msg('PDF này không có lớp chữ (có thể là bản scan). Hãy dùng Tẩy, Xóa vùng hoặc Xóa màu');
+ const r=await dlg('Xóa cụm từ',[{n:'q',l:'Cụm từ cần xóa',v:S.dq||''},{n:'m',l:'Cách xóa',type:'select',o:['Chỉ cụm từ','Cả dòng chứa cụm từ']},{n:'s',l:'Phạm vi',type:'select',o:['Tất cả các trang','Chỉ trang này']},{n:'cs',l:'Phân biệt chữ hoa/thường',type:'check',v:false}],'Xóa','Tìm trong lớp chữ của PDF rồi phủ màu nền lên vị trí tìm được (hoàn tác được). Nội dung gốc vẫn còn trong tệp.');
+ if(!r||!r.q.trim())return;S.dq=r.q;
+ const idx=r.s==='Chỉ trang này'?[cp()]:S.pages.map((_,i)=>i),found=[];
+ idx.forEach(i=>findPhrase(S.tx[i],r.q,!!r.cs,r.m!=='Chỉ cụm từ').forEach(f=>found.push({...f,i})));
+ if(!found.length)return msg('Không tìm thấy “'+r.q.trim()+'”');
+ snap();S.sel=null;
+ found.forEach(f=>S.pages[f.i].an.unshift({t:'cover',c:bgAt(f.i,(f.x1+f.x2)/2,(f.y1+f.y2)/2),w:1,x1:f.x1,y1:f.y1,x2:f.x2,y2:f.y2}));
+ redrawAll();msg('Đã xóa '+found.length+' chỗ ở '+new Set(found.map(f=>f.i)).size+' trang')}
+$('#find').insertAdjacentHTML('afterend',Bt('dph','🔠','Xóa cụm từ'));
+on('dph',delPhrase);
+document.querySelectorAll('#dph').forEach(b=>b.title='Xóa cụm từ');
 setTool('select');btns();
 </script>
 </body>
